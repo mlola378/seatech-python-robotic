@@ -41,6 +41,11 @@ class Robot():
             self.__battery_level += 10
             print("Je suis chargé à %s%%"%(self.__battery_level))
             time.sleep(1)
+        if self.__battery_level > 0:
+            self.__battery_level -= 5
+            if self.__battery_level <= 0:
+                self.battery_level = self.__power = False
+                print("Je n'ai plus de batterie")
 
     def status(self):
         print("L'état de %s est : %s. Je possède %s%% de batterie"%(self.__name, self.__current_status, self.__battery_level))
@@ -51,6 +56,12 @@ class Robot():
     def move(self, speed):
         if self.__current_status == 'running':
             self.__current_speed = speed
+            if self.__battery_level > 0:
+                self.__battery_level -= 5
+                if self.__battery_level <= 0:
+                    self.battery_level = self.__power = False
+                    print("Je n'ai plus de batterie")
+
 
     def speed(self):
         print("J'ai une vitesse de : %s"%(self.__current_speed),"km/h") 
