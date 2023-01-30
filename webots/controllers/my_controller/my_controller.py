@@ -1,93 +1,151 @@
-from controller import Robot, Motor, Camera, DistanceSensor, Keyboard
 
-KEYBOARD_SAMPLING_PERIOD = 200
-TIME_STEP = 64
+from controller import Robot, Motor, DistanceSensor, GPS
+import random
 
-CAMERA_SAMPLING_PERIOD = 50
-CAMERA_RECOGNITION_SAMPLING_PERIOD = 100
+class SmashBotMotor(Motor):
 
-class EpuckCamera(Camera):
-    def __init__(self):
-        super().__init__('camera')
-        self.enable(CAMERA_SAMPLING_PERIOD)
-        self.recognitionEnable(CAMERA_RECOGNITION_SAMPLING_PERIOD)
-        self.__tracked_name = None
-
-    def track_object(self, object_name):
-        self.__tracked_name = object_name
-
-    def is_tracked_object_present(self):
-        objs = self.getRecognitionObjects()
-        for obj in objs:
-            print('I saw something !')
-            print(obj)
-            if self.__tracked_name == obj.get_model().decode("utf-8"):
-                self.__recognized_object = obj
-                return True
-        return False
-
-
-DISTANCE_SENSIOR_SAMPLING_PERIOD = 50
-
-class EpuckDistanceSensor(DistanceSensor):
-    def __init__(self, name):
-        DistanceSensor.__init__(self, name)
-        self.enable(DISTANCE_SENSIOR_SAMPLING_PERIOD)
-
-class EpuckDistanceSensors():
-    DISTANCE_THRESHOLD = 78
-
-    def __init__(self):
-        self.__front_left = EpuckDistanceSensor('ps7')
-        self.__front_left2 = EpuckDistanceSensor('ps6')
-        self.__front_right = EpuckDistanceSensor('ps0')
-        self.__front_right2 = EpuckDistanceSensor('ps1')
-    
-    # Useful to debug Robot adventures
-    def __str__(self):
-        return "Left sensors: %s, %s\nRight sensors: %s, %s"%(
-                self.__front_left.getValue(),
-                self.__front_left2.getValue(),
-                self.__front_right.getValue(),
-                self.__front_right2.getValue()
-        )
-
-    def __repr__(self):
-        return self.__str__()
-
-    def front_left_collision_detected(self):
-        return (self.__front_left.getValue() > self.DISTANCE_THRESHOLD or
-                self.__front_left2.getValue() > self.DISTANCE_THRESHOLD)
-    
-    def front_right_collision_detected(self):
-        return (self.__front_right.getValue() > self.DISTANCE_THRESHOLD or
-                self.__front_right2.getValue() > self.DISTANCE_THRESHOLD)
-
-class RobotMotor(Motor):
-    def __init__(self, name):
+    def __init__(self, name=None):
         super().__init__(name)
         self.setPosition(float('inf'))
         self.setVelocity(0)
-        self.max_speed = self.getMaxVelocity()
+        
 
-class SeatechRobot(Robot):
-    max_speed = 60
+class SmashBotMotors():
+    def __init__(self, speed=None):
+        self.__front_right_wheel_m = SmashBotMotor("front_right_wheel_joint")
+        self.__front_left_wheel_m = SmashBotMotor("front_left_wheel_joint")
+        self.__rear_right_wheel_m = SmashBotMotor("back_right_wheel_joint")
+        self.__rear_left_wheel_m = SmashBotMotor("back_left_wheel_joint")
+    
+    def go_forward(self, speed=5):
+        self.__front_right_wheel_m.setVelocity(speed)
+        self.__front_left_wheel_m.setVelocity(speed)
+        self.__rear_left_wheel_m.setVelocity(speed)
+        self.__rear_right_wheel_m.setVelocity(speed)
+
+    def go_backwards(self, speed=5):
+
+        self.__front_right_wheel_m.setVelocity(-1*speed)
+        self.__front_left_wheel_m.setVelocity(-1*speed)
+        self.__rear_left_wheel_m.setVelocity(-1*speed)
+        self.__rear_right_wheel_m.setVelocity(-1*speed)
+        print("Go Back method")
+
+    def go_left(self, speed=20):
+        self.__front_right_wheel_m.setVelocity(3*speed)
+        self.__front_left_wheel_m.setVelocity(-speed)
+        self.__rear_left_wheel_m.setVelocity(-speed)
+        self.__rear_right_wheel_m.setVelocity(3*speed)
+        print("Go Left method")
+
+    def go_right(self, speed=20):
+            self.__front_right_wheel_m.setVelocity(-speed)
+            self.__front_left_wheel_m.setVelocity(3*speed)
+            self.__rear_left_wheel_m.setVelocity(3*speed)
+            self.__rear_right_wheel_m.setVelocity(-speed)
+
+class SmashBot(Robot):
+
+    def __init__(self, speed=None):
+        super().__init__()
+        self.__motors = SmashBotMotors()
+        self.__sensors = SmashBotSensors()
+        self.gps = SmashBotGPS()
+
+    def run(self, dir='forward', speed=20):
+        if dir=='forward':
+            self.__motors.go_forward()
+        elif dir=='backwards':
+            self.__motors.go_backwards()
+        elif dir=='left':
+            self.__motors.go_left()
+        elif dir=='right':
+            self.__motors.go_right()
+
+        self.__sensors.get_sensor()
+        self.__sensors.print_sensor_value()
+                
+
+
+class SmashBotSensor(DistanceSensor):
     def __init__(self):
         super().__init__()
-        self.__leftMotor = RobotMotor('front_left_wheel_joint')
-        self.__leftMotor2 = RobotMotor('back_left_wheel_joint') 
-        self.__rightMotor = RobotMotor('back_right_wheel_joint')
-        self.__rightMotor2 = RobotMotor('front_right_wheel_joint')
+        self.enable()
+        #self.getValue()
 
-    def run(self):
-        self.__rightMotor2.setVelocity(15)
-        self.__rightMotor.setVelocity(15)
-        self.__leftMotor.setVelocity(1)
-        self.__leftMotor2.setVelocity(1)
-
-    # create the Robot instance.
-robot = SeatechRobot()
-while robot.step(TIME_STEP) != -1:
-    robot.run()
+class SmashBotSensors(SmashBotSensor):
     
+    def __init__(self):
+        self.__front_right_sensor = DistanceSensor("front right distance sensor")
+        self.__front_left_sensor = DistanceSensor("front left distance sensor")
+        self.__rear_right_sensor = DistanceSensor("rear right distance sensor")
+        self.__rear_left_sensor = DistanceSensor("rear left distance sensor")
+
+    def get_sensor(self):
+        return [self.__front_right_sensor.getValue(),
+        self.__front_left_sensor.getValue(),
+        self.__rear_right_sensor.getValue(),
+        self.__rear_left_sensor.getValue()]
+
+    def print_sensor_value(self):
+        print("sensor value :")
+        print(self.__front_left_sensor.getValue())
+    
+class SmashBotGPS(GPS):
+    def __init__(self):
+        super().__init__('gps')
+
+
+    def getGPS(self):
+        return self.getValues()
+
+    def checkGPS(self):
+        borders={
+            "right":2.5,
+            "left":-2.5,
+            "front":2.5,
+            "back":-2.5
+        }
+
+        limit=0.3
+
+        coord=self.getValues()
+        long=[]
+
+        for key,value in borders.items():
+            long.append(abs(coord[0]-borders[key]))
+            long.append(abs(coord[1]-borders[key]))
+
+        long = min(long)
+
+        if(long<limit):
+            print(True)
+            return True
+        else:
+            print(False)
+            return False
+
+
+robot = SmashBot()
+
+
+timestep = int(robot.getBasicTimeStep())
+
+while robot.step(timestep) != -1:
+    gpsVal = robot.gps.getGPS()
+
+
+    robot.run("forwward")
+
+    if(robot.gps.checkGPS()==True):
+        if(turn==1):
+            robot.run("right")
+        else:
+            robot.run("left")
+    else:
+        robot.run("forward")
+        if(random.randint(0,1)==1):
+            turn=1
+        else:
+            turn=0
 
